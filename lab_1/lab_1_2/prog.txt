@@ -1,0 +1,66 @@
+1. Статическая библиотека (libstatic.a)
+Основной цикл сборки
+Компиляция объекта:
+gcc -Wall -Wextra -pedantic -std=c11 -c static_lib.c -o static_lib.o
+Создание архива (библиотеки):
+ar rcs libstatic.a static_lib.o
+Компиляция приложения:
+gcc -c hello.c -o hello.o
+Линковка (сборка воедино):
+gcc hello.o -L. -lstatic -o hello
+Команды анализа (Статика)
+Посмотреть состав архива (список файлов):
+ar t libstatic.a
+Посмотреть таблицу символов архива (индекс):
+nm -s libstatic.a
+Убедиться, что функция "вшита" в итоговый файл:
+nm hello | grep hello_from_static_lib
+
+Посмотреть ассемблерный код внутри библиотеки:
+objdump -d libstatic.a
+
+2. Динамическая библиотека (libdynamic.so)
+Основной цикл сборки
+Компиляция объекта (с PIC):
+gcc -Wall -Wextra -pedantic -std=c11 -fPIC -c dynamic_lib.c -o dynamic_lib.o
+Создание Shared Object:
+gcc -shared -o libdynamic.so dynamic_lib.o
+Линковка приложения:
+gcc hello_dynamic.o -L. -ldynamic -o hello_dynamic
+Сборка с "зашитым" путем поиска (чтобы не использовать LD_LIBRARY_PATH):
+gcc hello_dynamic.o -L. -ldynamic -Wl,-rpath,. -o hello_dynamic
+Команды анализа (Динамика)
+Проверить зависимости исполняемого файла (найдена ли библиотека):
+ldd hello_dynamic
+Посмотреть динамические символы (те, что ищутся в рантайме):
+nm -D hello_dynamic (ищи статус U)
+Посмотреть таблицу импорта/экспорта в .so:
+objdump -T libdynamic.so
+Запуск с временным указанием пути к библиотеке:
+LD_LIBRARY_PATH=. ./hello_dynamic
+
+3. диагностические команды (Общие)
+hexyl libstatic.a или hexyl libdynamic.so
+Поиск текстовых строк в бинарнике:
+strings hello | grep "Hello from" (помогает понять, попали ли данные внутрь)
+Анализ заголовков ELF (тип файла, архитектура, точки входа):
+readelf -h hello
+Просмотр всех секций (.text, .data, .rodata):
+readelf -S hello
+Отладка выполнения
+Трассировка системных вызовов (посмотреть, как ищется файл библиотеки):
+strace -e open,openat ./hello_dynamic
+Подробный лог работы динамического загрузчика:
+LD_DEBUG=libs ./hello_dynamic (покажет пошагово, где загрузчик ищет .so)
+Просмотр релокаций (тех самых "дырок" под адреса):
+objdump -r static_lib.o (до линковки)
+objdump -R hello_dynamic (динамические релокации)
+
+
+
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:.
+ldd hello_dynamic
+
+gcc hello_dynamic.o -L. -ldynamic -Wl,-rpath,. -o hello_dynamic
+ldd hello_dynamic
+
